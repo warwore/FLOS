@@ -17,4 +17,6 @@ clear the path by pressing 'c'.
 
 As of now 
 
-Red rectangels = 
+Red rectangles = Obstacles
+Green rectangles = Pickup points
+Blue rectangles = Dropoff points 
