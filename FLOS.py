@@ -15,9 +15,12 @@ FACTORY_MAP_RECT = pygame.Rect(150, 15, 630, 360)
 AGV_START_POS = (150, 300)
 AGV_SPEED = 0.2
 
-# OBSTACLES = [pygame.Rect(200, 100, 50, 50), pygame.Rect(400, 200, 100, 75)]
-# PICKUP_POINTS = [pygame.Rect(50, 50, 20, 20), pygame.Rect(500, 150, 30, 30)]
-# DROP_OFF_POINTS = [pygame.Rect(700, 50, 20, 20), pygame.Rect(250, 300, 30, 30)]
+#Obstacles parts
+OBSTACLES = [pygame.Rect(200, 100, 50, 50), pygame.Rect(400, 200, 100, 75)]
+PICKUP_POINTS = [pygame.Rect(50, 50, 20, 20), pygame.Rect(500, 150, 30, 30)]
+DROP_OFF_POINTS = [pygame.Rect(700, 50, 20, 20), pygame.Rect(250, 300, 30, 30)]
+collidable_rects = OBSTACLES + PICKUP_POINTS + DROP_OFF_POINTS 
+
 
 # Create game window
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -40,17 +43,17 @@ def draw_bg():
     pygame.draw.rect(screen, 'Black', DELIVERY_RECT, 2)
     pygame.draw.rect(screen, 'Black', FACTORY_MAP_RECT, 2)
 
-    # Draw obstacles
-    # for obstacle in OBSTACLES:
-    #     pygame.draw.rect(screen, 'Red', obstacle)
+    #Draw obstacles
+    for obstacle in OBSTACLES:
+        pygame.draw.rect(screen, 'Red', obstacle)
 
-    # # Draw pickup points
-    # for pickup_point in PICKUP_POINTS:
-    #     pygame.draw.rect(screen, 'Green', pickup_point)
+    # Draw pickup points
+    for pickup_point in PICKUP_POINTS:
+        pygame.draw.rect(screen, 'Green', pickup_point)
 
-    # # Draw drop off points
-    # for drop_off_point in DROP_OFF_POINTS:
-    #     pygame.draw.rect(screen, 'Blue', drop_off_point)
+    # Draw drop off points
+    for drop_off_point in DROP_OFF_POINTS:
+        pygame.draw.rect(screen, 'Blue', drop_off_point)
 
 
 def draw_text():
@@ -100,7 +103,9 @@ done_line = False
 current_path_index = 0
 agv_rect = agv_surf.get_rect(topleft=AGV_START_POS)
 moving = False
+drawing_path = False
 
+#Game Loop
 while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -109,6 +114,8 @@ while True:
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_a:
+                if not drawing_path:
+                    drawing_path = True
                 end = pygame.mouse.get_pos()
                 lines.append(start)
                 lines.append(end)
@@ -117,13 +124,23 @@ while True:
                 print('Current coordinates saved:', lines)
 
             if event.key == pygame.K_d:
-                print('Now drawing route')
-                done_line = True
+                if drawing_path:
+                    drawing_path = False
+                    corrected = autocorrect(lines)
+                    done_line = True
+                    print('Now drawing route')
 
             if event.key == pygame.K_r:
+                lines = []
+                start = AGV_START_POS
                 current_path_index = 0
-                agv_rect.topleft = agv_start_pos
+                agv_rect.topleft = AGV_START_POS
                 moving = False
+                drawing_path = False
+            
+            if event.key == pygame.K_c:
+                lines = []
+                drawing_path = False
 
     draw_bg()
     draw_text()
@@ -138,9 +155,34 @@ while True:
             current_path_index = 0
             moving = False
 
+    if drawing_path:
+        pygame.draw.lines(screen, 'Gold', False, lines)
+
     if moving:
         agv_rect.topleft = corrected[int(current_path_index)]
         draw_lines(corrected)
+
+        # Check for collision with obstacles
+        for obstacle in OBSTACLES:
+            if agv_rect.colliderect(obstacle):
+                print('Collision detected!')
+                current_path_index -= AGV_SPEED
+                moving = False
+                break
+
+        # Check for pickup
+        for i, pickup_point in enumerate(PICKUP_POINTS):
+            if agv_rect.colliderect(pickup_point):
+                print(f'Picking up from point {i}...')
+                PICKUP_POINTS.pop(i)
+                break
+
+        # Check for drop off
+        for i, drop_off_point in enumerate(DROP_OFF_POINTS):
+            if agv_rect.colliderect(drop_off_point):
+                print(f'Dropping off at point {i}...')
+                DROP_OFF_POINTS.pop(i)
+                break
 
     draw_agv()
 
