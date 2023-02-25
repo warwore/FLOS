@@ -1,18 +1,23 @@
+import pygame
+from sys import exit
+import numpy as np
+
 class AGV:
-    def __init__(self, max_speed, battery_life, current_position):
-        self.max_speed = max_speed  # maximum speed of the AGV
-        self.battery_life = battery_life  # current battery life of the AGV
-        self.current_position = current_position  # current position of the AGV
-    
-    def move(self, new_position):
-        # calculate distance between current position and new position
-        distance = abs(new_position - self.current_position)
-        # calculate time to travel that distance at maximum speed
-        time_to_travel = distance / self.max_speed
-        # update current position
-        self.current_position = new_position
-        # decrease battery life by the amount of time it took to travel
-        self.battery_life -= time_to_travel
-        
-        if self.battery_life <= 0:
-            print("AGV out of battery!")
+    def __init__(self, x, y, speed):
+        self.x = x
+        self.y = y
+        self.speed = speed
+        self.start_pos = (x, y)
+        self.surf = pygame.image.load('graphics/agv.png').convert_alpha()
+        self.surf = pygame.transform.scale(self.surf, (20, 20))
+        self.rect = self.surf.get_rect(topleft=self.start_pos)
+        self.camera_offset = 10
+        self.cam_x = self.x + self.camera_offset
+        self.cam_y = self.y + self.camera_offset
+        self.camera_length = 10
+        self.direction = 'right'
+
+    def move(self, drawing, color):
+        if not drawing and color == 215:
+            self.rect.x += 1
+            self.cam_x += 1

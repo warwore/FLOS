@@ -17,7 +17,7 @@ AGV_SPEED = 0.2
 
 #Obstacles parts
 OBSTACLES = [pygame.Rect(200, 100, 50, 50), pygame.Rect(400, 200, 100, 75)]
-PICKUP_POINTS = [pygame.Rect(50, 50, 20, 20), pygame.Rect(500, 150, 30, 30)]
+PICKUP_POINTS = [pygame.Rect(300, 50, 20, 20), pygame.Rect(500, 150, 30, 30)]
 DROP_OFF_POINTS = [pygame.Rect(700, 50, 20, 20), pygame.Rect(250, 300, 30, 30)]
 collidable_rects = OBSTACLES + PICKUP_POINTS + DROP_OFF_POINTS 
 
@@ -142,8 +142,28 @@ while True:
                 lines = []
                 drawing_path = False
 
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            # Add new obstacle on left mouse button click
+            if event.button == 1:
+                new_obstacle = pygame.Rect(event.pos[0], event.pos[1], 50, 50)
+                OBSTACLES.append(new_obstacle)
+                print('New obstacle added')
+
+            # Add new pickup point on right mouse button click
+            elif event.button == 3:
+                new_pickup_point = pygame.Rect(event.pos[0], event.pos[1], 20, 20)
+                PICKUP_POINTS.append(new_pickup_point)
+                print('New pickup point added')
+
+            # Add new drop-off point on middle mouse button click
+            elif event.button == 2:
+                new_drop_off_point = pygame.Rect(event.pos[0], event.pos[1], 20, 20)
+                DROP_OFF_POINTS.append(new_drop_off_point)
+                print('New drop-off point added')
+
     draw_bg()
     draw_text()
+
 
     if done_line:
         corrected = autocorrect(lines)
@@ -185,6 +205,8 @@ while True:
                 break
 
     draw_agv()
+
+
 
     pygame.display.update()
     clock.tick(FPS)
