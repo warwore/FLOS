@@ -100,17 +100,38 @@ class AGV(pygame.sprite.Sprite):
         self.pos = self.rect.center
         self.speed = 1.5
         self.direction = pygame.math.Vector2(0,0)
+        self.battery = 100 #Initial battery
+        self.compare_battery = 0 #Used to check if the battery has decreased
         
         # path
         self.path = []
         self.collision_rects = []
-        
+        self.target_pickup_x, self.target_pickup_y = 0,0
+        self.target_dropoff_x, self.target_dropoff_y = 0,0
+        self.mode = 'picking up'
+
+    def set_mode(self,mode): #Modes are 'picking up', 'dropping off', and 'driving'
+        self.mode = mode
+
+    def set_battery_compare(self,battery):
+        self.compare_battery = battery
+
         
     def get_coord(self):
         col = self.rect.centerx // TILE_SIZE
         row = self.rect.centery // TILE_SIZE
         return (col,row)
     
+     
+    def set_dropoff(self,x,y):
+        self.target_dropoff_x = x
+        self.target_dropoff_y = y
+        
+    def set_pickup(self,x,y):
+        self.target_pickup_x = x
+        self.target_pickup_y = y
+        
+
     def set_path(self,path):
         self.path = path
         self.create_collision_rects()
@@ -144,31 +165,38 @@ class AGV(pygame.sprite.Sprite):
         self.pos += self.direction * self.speed
         self.check_collisions()
         self.rect.center = self.pos
+        self.battery -= .1 #Decrease battery over time
                 
-agv_1 = pygame.sprite.GroupSingle(AGV()) #Make agv
+AGVs = []
+
+#Find number of consumption points
+def find_consumption(matrix):
+    c = 0
+    for i in range(ROWS):
+        for j in range(MAX_COLS):
+            if matrix[i][j] == 1 or matrix[i][j] == 2:
+                c += 1
+    return c
 
 #Finds locations of pickup points
 def find_pickup(matrix):
-    c = 0
     coords = []
     for i in range(ROWS):
         for j in range(MAX_COLS):
             if matrix[i][j] == 1:
-                c += 1
-                coords.append((i,j))
-    return coords, c
+                coords.append((j,i))
+    return coords
 
 #Finds locations of dropoff points
 def find_dropoff(matrix):
-    c = 0
     coords = []
     for i in range(ROWS):
         for j in range(MAX_COLS):
             if matrix[i][j] == 2:
-                c += 1
-                coords.append((i,j))
-    return coords, c        
+                coords.append((j,i))
+    return coords      
 
+#Draw path
 def draw_path(path):
     if path:
         points = []
@@ -220,13 +248,47 @@ while run:
     if setup:
         draw_grid()
 
-    if path_draw:
-        draw_path(path)
-    draw_world()
+    #if path_draw:
+       # draw_path(path)  #paths arent really neccessary to draw
+    draw_world() 
 
     #AGV
-    agv_1.update()
-    agv_1.draw(screen)
+    if AGV: #If the AGVs are instantiated
+        for AGV in AGVs:
+            AGV.update()
+            AGV.draw(screen)
+            grid.cleanup()
+            if AGV.sprite.mode == 'picking up': #If the AGV needs to pick up
+                start_x,start_y = AGV.sprite.get_coord()
+                start = grid.node(start_x,start_y)
+                end_x,end_y = AGV.sprite.target_pickup_x, AGV.sprite.target_pickup_y
+                end = grid.node(end_x,end_y)
+                path, runs = finder.find_path(start,end,grid)
+                AGV.sprite.set_path(path)
+                grid.cleanup()
+                AGV.sprite.set_battery_compare(AGV.sprite.battery)
+                AGV.sprite.set_mode('driving') #Now set it to drive
+
+            #This logic needs to be changed    
+            if AGV.sprite.mode == 'driving': #If the AGV is driving and motion has taken place
+                if AGV.sprite.get_coord()[0] == AGV.sprite.target_dropoff_x: #If the AGV is on the dropoff point
+                    if AGV.sprite.battery < AGV.sprite.compare_battery: #If time has taken place
+                        AGV.sprite.set_mode('picking up') #It now needs to pickup
+                elif AGV.sprite.get_coord()[0] == AGV.sprite.target_pickup_x: #If the AGV is on the pickup point
+                    if AGV.sprite.battery < AGV.sprite.compare_battery: #If time has taken place
+                        AGV.sprite.set_mode('dropping off') #It now needs to dropoff
+                    
+            if AGV.sprite.mode == 'dropping off': #If the AGV needs to drop off
+                start_x,start_y = AGV.sprite.get_coord()
+                start = grid.node(start_x,start_y)
+                end_x,end_y = AGV.sprite.target_dropoff_x, AGV.sprite.target_dropoff_y
+                end = grid.node(end_x,end_y)
+                path, runs = finder.find_path(start,end,grid)
+                AGV.sprite.set_path(path)
+                grid.cleanup()
+                AGV.sprite.set_battery_compare(AGV.sprite.battery)
+                AGV.sprite.set_mode('driving') #Now set it to drive
+                
 
     #Save and load data
     if save_button.draw(screen):
@@ -307,20 +369,44 @@ while run:
         #For Testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_t:
-                print(agv_1.sprite.get_coord())
+                coords = find_dropoff(world_data)
+                print(coords)
         
         #For testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_y:
-                start_x,start_y = agv_1.sprite.get_coord()
+                start_x,start_y = AGVs[0].sprite.get_coord()
+                start = grid.node(start_x, start_y)
+                mouse_pos = pygame.mouse.get_pos()
+                end_x, end_y = AGVs[0].sprite.target_pickup_x, AGVs[0].sprite.target_pickup_y
+                end = grid.node(end_x,end_y)
+                path, runs = finder.find_path(start,end,grid)
+                path_draw = True
+                AGVs[0].sprite.set_path(path)
+
+        #For testing       
+        if event.type == pygame.KEYDOWN: 
+            if event.key == pygame.K_u:
+                start_x,start_y = AGVs[1].sprite.get_coord()
                 start = grid.node(start_x, start_y)
                 mouse_pos = pygame.mouse.get_pos()
                 end_x, end_y = mouse_pos[0] //25, mouse_pos[1] //25
                 end = grid.node(end_x,end_y)
                 path, runs = finder.find_path(start,end,grid)
-                path_draw = True
-                agv_1.sprite.set_path(path)
-                
+                #path_draw = True
+                AGVs[1].sprite.set_path(path)
+
+        #To create the AGVs 
+        if event.type == pygame.KEYDOWN: 
+            if event.key == pygame.K_a:
+                number = find_consumption(world_data) // 2 #How many AGVs to make. Ideally, each AGV has their own unique drop off and pick up point
+                for i in range(number):
+                    AGVs.append(pygame.sprite.GroupSingle(AGV()))
+                for i in range(len(AGVs)): #This assumes that each agv gets their own pickup and dropoff point
+                    AGVs[i].sprite.set_dropoff(find_dropoff(world_data)[i][0], find_dropoff(world_data)[i][1])
+                    AGVs[i].sprite.set_pickup(find_pickup(world_data)[i][0], find_pickup(world_data)[i][1])
+                    
+
         #Test getting window position      
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_z:
