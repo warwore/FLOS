@@ -81,6 +81,30 @@ def draw_world():
             if tile >= 0:
                 screen.blit(img_list[tile], (x * TILE_SIZE - scroll, y * TILE_SIZE) ) 
 
+#function for drawing agv
+agv_start = (16*25,25) 
+def draw_agv():
+    agv_rect = pygame.draw.circle(screen, (0,0,255), agv_start, 3)
+                
+def find_pickup(matrix):
+    c = 0
+    coords = []
+    for i in range(ROWS):
+        for j in range(MAX_COLS):
+            if matrix[i][j] == 1:
+                c += 1
+                coords.append((i,j))
+    return coords, c
+
+def find_dropoff(matrix):
+    c = 0
+    coords = []
+    for i in range(ROWS):
+        for j in range(MAX_COLS):
+            if matrix[i][j] == 2:
+                c += 1
+                coords.append((i,j))
+    return coords, c        
 #creat buttons
 save_button = button.Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT + LOWER_MARGIN - 50, save_img, 1)
 load_button = button.Button(SCREEN_WIDTH // 2 + 200, SCREEN_HEIGHT + LOWER_MARGIN - 50, load_img, 1)
@@ -94,7 +118,6 @@ for i in range(len(img_list)):
     if button_col == 3:
         button_row += 1
         button_col = 0
-
 
 
 
@@ -178,8 +201,42 @@ while run:
                 scroll_left = False 
             if event.key == pygame.K_RIGHT:
                 scroll_right = False
-    
 
+
+            #Get world data
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_q:
+                print(world_data)
+                
+        #Stop drawing lines        
+        if event.type == pygame.KEYDOWN: 
+            if event.key == pygame.K_w:
+                setup = False
+                 
+        #Test function       
+        if event.type == pygame.KEYDOWN: 
+            if event.key == pygame.K_t:
+                number, pickup = find_pickup(world_data)
+                print(number)
+                print(pickup)
+        
+        #Test function       
+        if event.type == pygame.KEYDOWN: 
+            if event.key == pygame.K_y:
+                number, pickup = find_dropoff(world_data)
+                print(number)
+                print(pickup)
+                
+        #Test getting window position      
+        if event.type == pygame.KEYDOWN: 
+            if event.key == pygame.K_z:
+                print(pygame.mouse.get_pos())
+                row = pygame.mouse.get_pos()[1]//TILE_SIZE
+                col = pygame.mouse.get_pos()[0]//TILE_SIZE
+                print(row,col)
+                 
+    
+    
 
     pygame.display.update()
 
