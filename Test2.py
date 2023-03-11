@@ -4,6 +4,7 @@ import csv
 
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
+from pathfinding.core.diagonal_movement import DiagonalMovement
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -179,7 +180,7 @@ def draw_path(path):
         pygame.draw.lines(screen, '#4a4a4a', False, points, 5)
 
 
-finder = AStarFinder() 
+finder = AStarFinder(diagonal_movement=DiagonalMovement.always) 
 
 
 #creat buttons
