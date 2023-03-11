@@ -2,6 +2,9 @@ import pygame
 import button
 import csv 
 
+from pathfinding.core.grid import Grid
+from pathfinding.finder.a_star import AStarFinder
+
 pygame.init()
 clock = pygame.time.Clock()
 FPS = 60
@@ -27,6 +30,7 @@ scroll_left = False
 scroll_right = False
 scroll = 0 
 scroll_speed = 1
+TILE_OFFSET = TILE_SIZE // 2
 
 
 #load images
@@ -51,7 +55,7 @@ RED = (255, 0, 0)
 #creat empty tile list
 world_data = []
 for row in range(ROWS):
-    r = [-1] * MAX_COLS
+    r = [3] * MAX_COLS #pathfinding library seeing anything <= 0 as an obstacle. Therefore the default number was changed from -1 to 3
     world_data.append(r)
 
 # #create ground
@@ -78,14 +82,71 @@ def draw_grid():
 def draw_world():
     for y, row in enumerate(world_data):
         for x, tile in enumerate(row):
-            if tile >= 0:
+            if tile <= 2: #Logic for this changed since no tile is now a 3
                 screen.blit(img_list[tile], (x * TILE_SIZE - scroll, y * TILE_SIZE) ) 
 
-#function for drawing agv
-agv_start = (16*25,25) 
-def draw_agv():
-    agv_rect = pygame.draw.circle(screen, (0,0,255), agv_start, 3)
+#create agv class                
+class AGV(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        
+        # basic
+        self.image = pygame.image.load('graphics/blue-circle.png').convert_alpha()
+        self.image = pygame.transform.scale(self.image,(10, 10))
+        self.rect = self.image.get_rect(center = (TILE_OFFSET,15*TILE_SIZE - TILE_OFFSET))
+        
+        # movement
+        self.pos = self.rect.center
+        self.speed = 1.5
+        self.direction = pygame.math.Vector2(0,0)
+        
+        # path
+        self.path = []
+        self.collision_rects = []
+        
+        
+    def get_coord(self):
+        col = self.rect.centerx // TILE_SIZE
+        row = self.rect.centery // TILE_SIZE
+        return (col,row)
+    
+    def set_path(self,path):
+        self.path = path
+        self.create_collision_rects()
+        
+    def create_collision_rects(self):
+        if self.path:
+            self.collision_rects = []
+            for point in self.path:
+                x = (point[0] * 25) + TILE_OFFSET
+                y = (point[1] * 25) + TILE_OFFSET
+                rect = pygame.Rect((x - 2,y - 2),(4,4))
+                self.collision_rects.append(rect)
                 
+    def get_direction(self):
+        if self.collision_rects:
+            start = pygame.math.Vector2(self.pos)
+            end = pygame.math.Vector2(self.collision_rects[0].center)
+            self.direction = (end-start).normalize()
+        else:
+            self.direction = pygame.math.Vector2(0,0)
+            self.path = []
+    
+    def check_collisions(self):
+        if self.collision_rects:
+            for rect in self.collision_rects:
+                if rect.collidepoint(self.pos):
+                    del self.collision_rects[0]
+                    self.get_direction()
+    
+    def update(self):
+        self.pos += self.direction * self.speed
+        self.check_collisions()
+        self.rect.center = self.pos
+                
+agv_1 = pygame.sprite.GroupSingle(AGV()) #Make agv
+
+#Finds locations of pickup points
 def find_pickup(matrix):
     c = 0
     coords = []
@@ -96,6 +157,7 @@ def find_pickup(matrix):
                 coords.append((i,j))
     return coords, c
 
+#Finds locations of dropoff points
 def find_dropoff(matrix):
     c = 0
     coords = []
@@ -105,6 +167,21 @@ def find_dropoff(matrix):
                 c += 1
                 coords.append((i,j))
     return coords, c        
+
+def draw_path(path):
+    if path:
+        points = []
+        for point in path:
+            x = (point[0] * 25) + TILE_OFFSET
+            y = (point[1] * 25) + TILE_OFFSET
+            points.append((x,y))
+            pygame.draw.circle(screen, '#4a4a4a', (x,y), 2)
+        pygame.draw.lines(screen, '#4a4a4a', False, points, 5)
+
+
+finder = AStarFinder() 
+
+
 #creat buttons
 save_button = button.Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT + LOWER_MARGIN - 50, save_img, 1)
 load_button = button.Button(SCREEN_WIDTH // 2 + 200, SCREEN_HEIGHT + LOWER_MARGIN - 50, load_img, 1)
@@ -129,13 +206,26 @@ for i in range(len(img_list)):
 
 
 #GAME LOOP
+setup = True #For grid
+path_draw = False #For drawing path
 run = True
 while run:
 
+    grid = Grid(matrix = world_data) #Get grid for pathfinding
+
     #background
     draw_bg()
-    draw_grid()
+
+    if setup:
+        draw_grid()
+
+    if path_draw:
+        draw_path(path)
     draw_world()
+
+    #AGV
+    agv_1.update()
+    agv_1.draw(screen)
 
     #Save and load data
     if save_button.draw(screen):
@@ -184,7 +274,7 @@ while run:
            if world_data[y][x] != current_tile: 
                 world_data[y][x] = current_tile
         if pygame.mouse.get_pressed()[2] == 1:
-           world_data[y][x] = - 1
+           world_data[y][x] = 3 #Logic changed
 
     #EVENT HANDLER
     for event in pygame.event.get():
@@ -203,7 +293,7 @@ while run:
                 scroll_right = False
 
 
-            #Get world data
+        #Get world data
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_q:
                 print(world_data)
@@ -213,19 +303,22 @@ while run:
             if event.key == pygame.K_w:
                 setup = False
                  
-        #Test function       
+        #For Testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_t:
-                number, pickup = find_pickup(world_data)
-                print(number)
-                print(pickup)
+                print(agv_1.sprite.get_coord())
         
-        #Test function       
+        #For testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_y:
-                number, pickup = find_dropoff(world_data)
-                print(number)
-                print(pickup)
+                start_x,start_y = agv_1.sprite.get_coord()
+                start = grid.node(start_x, start_y)
+                mouse_pos = pygame.mouse.get_pos()
+                end_x, end_y = mouse_pos[0] //25, mouse_pos[1] //25
+                end = grid.node(end_x,end_y)
+                path, runs = finder.find_path(start,end,grid)
+                path_draw = True
+                agv_1.sprite.set_path(path)
                 
         #Test getting window position      
         if event.type == pygame.KEYDOWN: 
