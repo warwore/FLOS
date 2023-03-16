@@ -25,7 +25,7 @@ pygame.display.set_caption('AGV Simulator')
 ROWS = 16
 MAX_COLS = 150
 TILE_SIZE = SCREEN_HEIGHT // ROWS
-TILE_TYPES = 3
+TILE_TYPES = 4
 current_tile = 0
 scroll_left = False
 scroll_right = False
@@ -56,7 +56,7 @@ RED = (255, 0, 0)
 #creat empty tile list
 world_data = []
 for row in range(ROWS):
-    r = [3] * MAX_COLS #pathfinding library seeing anything <= 0 as an obstacle. Therefore the default number was changed from -1 to 3
+    r = [TILE_TYPES] * MAX_COLS #pathfinding library seeing anything <= 0 as an obstacle. Therefore the default number was changed from -1 to 4
     world_data.append(r)
 
 # #create ground
@@ -83,7 +83,7 @@ def draw_grid():
 def draw_world():
     for y, row in enumerate(world_data):
         for x, tile in enumerate(row):
-            if tile <= 2: #Logic for this changed since no tile is now a 3
+            if tile <= 3: #Logic for this changed since the floor is a '4'
                 screen.blit(img_list[tile], (x * TILE_SIZE - scroll, y * TILE_SIZE) ) 
 
 #create agv class                
