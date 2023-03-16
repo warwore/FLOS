@@ -32,7 +32,7 @@ scroll_right = False
 scroll = 0 
 scroll_speed = 1
 TILE_OFFSET = TILE_SIZE // 2
-
+game_paused = False
 
 #load images
 bg = pygame.image.load('graphics/background.png').convert_alpha()
@@ -52,6 +52,8 @@ BLACK = (0, 0, 0)
 ORANGE = (250, 213, 165)
 RED = (255, 0, 0)
 
+#define fonts
+font = pygame.font.SysFont("arialblack", 40)
 
 #creat empty tile list
 world_data = []
@@ -62,6 +64,9 @@ for row in range(ROWS):
 # #create ground
 # for tile in range(0, MAX_COLS):
 #     world_data[ROWS - 1][tile] = 0
+def draw_text(text, font, text_color, x, y):
+    img = font.render(text,True, WHITE)
+    screen.blit(img,(x,y))
 
 #draw background function 
 def draw_bg():
@@ -76,8 +81,8 @@ def draw_grid():
     for c in range(MAX_COLS + 1): 
         pygame.draw.line(screen, BLACK, (c * TILE_SIZE - scroll, 0), (c * TILE_SIZE - scroll, SCREEN_HEIGHT))
     #horizontal lines
-    for c in range(MAX_COLS + 1): 
-        pygame.draw.line(screen, BLACK, (0, c * TILE_SIZE), (SCREEN_WIDTH, c * TILE_SIZE))
+    for c in range(ROWS + 1): 
+        pygame.draw.line(screen, BLACK, (0, c * TILE_SIZE), (SCREEN_WIDTH , c * TILE_SIZE))
 
 #function for drawing the world tiles
 def draw_world():
@@ -226,7 +231,23 @@ for i in range(len(img_list)):
         button_col = 0
 
 
+#load button images
+resume_img = pygame.image.load("graphics/menu/button_resume.png").convert_alpha()
+options_img = pygame.image.load("graphics/menu/button_options.png").convert_alpha()
+quit_img = pygame.image.load("graphics/menu/button_quit.png").convert_alpha()
+video_img = pygame.image.load('graphics/menu//button_video.png').convert_alpha()
+audio_img = pygame.image.load('graphics/menu//button_audio.png').convert_alpha()
+keys_img = pygame.image.load('graphics/menu//button_keys.png').convert_alpha()
+back_img = pygame.image.load('graphics/menu//button_back.png').convert_alpha()
 
+#create button instances
+resume_button = button.Button(304, 125, resume_img, 1)
+options_button = button.Button(297, 250, options_img, 1)
+quit_button = button.Button(336, 375, quit_img, 1)
+video_button = button.Button(226, 75, video_img, 1)
+audio_button = button.Button(225, 200, audio_img, 1)
+keys_button = button.Button(246, 325, keys_img, 1)
+back_button = button.Button(332, 450, back_img, 1)
 
 
 
@@ -251,6 +272,18 @@ while run:
     #if path_draw:
        # draw_path(path)  #paths arent really neccessary to draw
     draw_world() 
+
+    #menu stuff
+    if game_paused == True:
+        screen.fill(BLACK)
+        if resume_button.draw(screen):
+            game_paused = False
+        if options_button.draw(screen):
+            pass
+        if quit_button.draw(screen):
+            run = False
+    else:
+        draw_text("Press Space to pause", font, WHITE, 260, 390)
 
     #AGV
     if AGV: #If the AGVs are instantiated
@@ -323,6 +356,7 @@ while run:
     if scroll_right == True and scroll < (MAX_COLS * TILE_SIZE) - SCREEN_WIDTH:
         scroll += 5
 
+    
 
     #add new tiles to the screen
     #get mouse postion
@@ -349,13 +383,16 @@ while run:
                 scroll_left = True 
             if event.key == pygame.K_RIGHT:
                 scroll_right = True
+            #pause
+            if event.key == pygame.K_SPACE:
+                game_paused = True
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
                 scroll_left = False 
             if event.key == pygame.K_RIGHT:
                 scroll_right = False
-
-
+            
+        
         #Get world data
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_q:
