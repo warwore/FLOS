@@ -93,13 +93,13 @@ def draw_world():
 
 #create agv class                
 class AGV(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, number):
         super().__init__()
         
         # basic
         self.image = pygame.image.load('graphics/blue-circle.png').convert_alpha()
         self.image = pygame.transform.scale(self.image,(10, 10))
-        self.rect = self.image.get_rect(center = (TILE_OFFSET,15*TILE_SIZE - TILE_OFFSET))
+        self.rect = self.image.get_rect(center = (TILE_OFFSET + 25 * number,15*TILE_SIZE - TILE_OFFSET)) #Each AGV will get placed on a different block
         
         # movement
         self.pos = self.rect.center
@@ -114,7 +114,7 @@ class AGV(pygame.sprite.Sprite):
         self.target_pickup_x, self.target_pickup_y = 0,0
         self.target_dropoff_x, self.target_dropoff_y = 0,0
         self.recharge_x, self.recharge_y = 0,0
-        self.mode = 'picking up'
+        self.mode = 'idle'
 
     def set_mode(self,mode): #Modes are 'picking up', 'dropping off', and 'driving'
         self.mode = mode
@@ -176,7 +176,7 @@ class AGV(pygame.sprite.Sprite):
         self.pos += self.direction * self.speed
         self.check_collisions()
         self.rect.center = self.pos
-        self.battery -= .1 #Decrease battery over time
+        self.battery -= .01 * self.speed #Decrease battery relative to AGV speed
                 
 AGVs = []
 
@@ -191,12 +191,12 @@ def find_consumption(matrix):
 
 #Finds the recharge point
 def find_recharge(matrix):
-    #coords = []
+    coords = []
     for i in range(ROWS):
         for j in range(MAX_COLS):
             if matrix[i][j] == 3:
-                #coords.append((j,i))
-                return i,j
+                coords.append((j,i))
+    return coords
 
 #Finds locations of pickup points
 def find_pickup(matrix):
@@ -306,7 +306,15 @@ while run:
             AGV.update()
             AGV.draw(screen)
             grid.cleanup()
-            if AGV.sprite.mode == 'picking up': #If the AGV needs to pick up
+
+            if AGV.sprite.mode == 'idle':
+                if AGV.sprite.battery < 20:
+                    AGV.sprite.set_mode('recharge')
+                else:
+                    AGV.sprite.set_mode('pick up')
+
+
+            if AGV.sprite.mode == 'pick up': #If the AGV needs to pick up
                 start_x,start_y = AGV.sprite.get_coord()
                 start = grid.node(start_x,start_y)
                 end_x,end_y = AGV.sprite.target_pickup_x, AGV.sprite.target_pickup_y
@@ -317,31 +325,20 @@ while run:
                 AGV.sprite.set_battery_compare(AGV.sprite.battery)
                 AGV.sprite.set_mode('driving') #Now set it to drive
 
-            # if AGV.sprite.battery <= 10:      add an 'idle' mode. can only recharge if the previous mode is idle
-            #     AGV.sprite.mode = 'recharge'
-
-            # if AGV.sprite.mode == 'recharge':
-            #     start_x,start_y = AGV.sprite.get_coord()
-            #     start = grid.node(start_x,start_y)
-            #     end_x,end_y = AGV.sprite.recharge_x, AGV.sprite.recharge_y
-            #     end = grid.node(end_x,end_y)
-            #     path, runs = finder.find_path(start,end,grid)
-            #     AGV.sprite.set_path(path)
-            #     grid.cleanup()
-            #     AGV.sprite.set_battery_compare(AGV.sprite.battery)
-            #     AGV.sprite.set_mode('driving') #Now set it to drive
-
-
             #This logic needs to be changed    
             if AGV.sprite.mode == 'driving': #If the AGV is driving and motion has taken place
-                if AGV.sprite.get_coord()[0] == AGV.sprite.target_dropoff_x and AGV.sprite.get_coord()[1] == AGV.sprite.target_dropoff_y: #If the AGV is on the dropoff point
+                if AGV.sprite.get_coord()[0] == AGV.sprite.target_pickup_x and AGV.sprite.get_coord()[1] == AGV.sprite.target_pickup_y : #If the AGV is on the pickup point
                     if AGV.sprite.battery < AGV.sprite.compare_battery: #If time has taken place
-                        AGV.sprite.set_mode('picking up') #It now needs to pickup
-                elif AGV.sprite.get_coord()[0] == AGV.sprite.target_pickup_x and AGV.sprite.get_coord()[1] == AGV.sprite.target_pickup_y : #If the AGV is on the pickup point
-                    if AGV.sprite.battery < AGV.sprite.compare_battery: #If time has taken place
-                        AGV.sprite.set_mode('dropping off') #It now needs to dropoff
+                        AGV.sprite.set_mode('drop off') #It now needs to dropoff
+                elif AGV.sprite.get_coord()[0] == AGV.sprite.target_dropoff_x and AGV.sprite.get_coord()[1] == AGV.sprite.target_dropoff_y: #If the AGV is on the dropoff point
+                        AGV.sprite.set_mode('idle') #It now needs to pickup
+                elif AGV.sprite.get_coord()[0] == AGV.sprite.recharge_x and AGV.sprite.get_coord()[1] == AGV.sprite.recharge_y:
+                    AGV.sprite.battery += 0.08 #Arbitrary
+                    if AGV.sprite.battery > 99: #if charged
+                        AGV.sprite.set_mode('idle')
+            
                     
-            if AGV.sprite.mode == 'dropping off': #If the AGV needs to drop off
+            if AGV.sprite.mode == 'drop off': #If the AGV needs to drop off
                 start_x,start_y = AGV.sprite.get_coord()
                 start = grid.node(start_x,start_y)
                 end_x,end_y = AGV.sprite.target_dropoff_x, AGV.sprite.target_dropoff_y
@@ -351,6 +348,18 @@ while run:
                 grid.cleanup()
                 AGV.sprite.set_battery_compare(AGV.sprite.battery)
                 AGV.sprite.set_mode('driving') #Now set it to drive
+
+            if AGV.sprite.mode == 'recharge':
+                start_x,start_y = AGV.sprite.get_coord()
+                start = grid.node(start_x,start_y)
+                end_x,end_y = AGV.sprite.recharge_x, AGV.sprite.recharge_y
+                end = grid.node(end_x,end_y)
+                path, runs = finder.find_path(start,end,grid)
+                AGV.sprite.set_path(path)
+                grid.cleanup()
+                AGV.sprite.set_battery_compare(AGV.sprite.battery)
+                AGV.sprite.set_mode('driving') #Now set it to drive
+
                 
 
     #Save and load data
@@ -442,39 +451,36 @@ while run:
         #For testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_y:
-                start_x,start_y = AGVs[0].sprite.get_coord()
-                start = grid.node(start_x, start_y)
-                mouse_pos = pygame.mouse.get_pos()
-                end_x, end_y = AGVs[0].sprite.target_pickup_x, AGVs[0].sprite.target_pickup_y
-                end = grid.node(end_x,end_y)
-                path, runs = finder.find_path(start,end,grid)
-                path_draw = True
-                AGVs[0].sprite.set_path(path)
+                print(AGVs[0].sprite.get_coord())
+                print(AGVs[0].sprite.recharge_x)
+                print(AGVs[0].sprite.recharge_y)
 
         #For testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_u:
-                start_x,start_y = AGVs[1].sprite.get_coord()
-                start = grid.node(start_x, start_y)
-                mouse_pos = pygame.mouse.get_pos()
-                end_x, end_y = mouse_pos[0] //25, mouse_pos[1] //25
-                end = grid.node(end_x,end_y)
-                path, runs = finder.find_path(start,end,grid)
-                #path_draw = True
-                AGVs[1].sprite.set_path(path)
+                print(AGVs[0].sprite.battery)
 
         #To create the AGVs 
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_a:
                 number = find_consumption(world_data) // 2 #How many AGVs to make. Ideally, each AGV has their own unique drop off and pick up point
                 for i in range(number):
-                    AGVs.append(pygame.sprite.GroupSingle(AGV()))
+                    AGVs.append(pygame.sprite.GroupSingle(AGV(number=i)))
                 for i in range(len(AGVs)): #This assumes that each agv gets their own pickup and dropoff point
                     AGVs[i].sprite.set_dropoff(find_dropoff(world_data)[i][0], find_dropoff(world_data)[i][1])
                     AGVs[i].sprite.set_pickup(find_pickup(world_data)[i][0], find_pickup(world_data)[i][1])
-                    AGVs[i].sprite.set_recharge(find_recharge(world_data)[0], find_recharge(world_data)[1]) #For now, each AGV shares the same recharge point
-                    print(AGVs[i].sprite.recharge_x, AGVs[i].sprite.recharge_y)
-                    
+                    AGVs[i].sprite.set_recharge(find_recharge(world_data)[i][0], find_recharge(world_data)[i][1]) #For now, each AGV shares the same recharge point
+                                  
+        #Speed up and slow down simulation
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_EQUALS:
+                for AGV in AGVs:
+                    AGV.sprite.speed *= 1.2
+                    print('he')
+            if event.key == pygame.K_MINUS:
+                for AGV in AGVs:
+                    AGV.sprite.speed /= 1.2
+
 
         #Test getting window position      
         if event.type == pygame.KEYDOWN: 
