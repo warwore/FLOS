@@ -36,9 +36,9 @@ scroll_speed = 1
 TILE_OFFSET = TILE_SIZE // 2
 game_paused = False
 
-client = "testRFID"
+client = "testRFID1"
 broker = "info8000.ga"
-topic = "FLOSCapstone/acl61582/RFID1"
+topic = "FLOSCapstone/acl61582/RFID12"
 username = "giiuser"
 password = "giipassword"
 
@@ -52,8 +52,8 @@ client.on_message = onMessageRFID
 client.username_pw_set(username,password)
 client.connect(broker)
 client.subscribe(topic)
-SetPointX = 281 // TILE_SIZE
-SetPointY = 261 // TILE_SIZE
+SetPointX = 288 // TILE_SIZE
+SetPointY = 259 // TILE_SIZE
 SetPointX2 = 610 // TILE_SIZE
 SetPointY2 = 120 // TILE_SIZE
 
@@ -207,7 +207,7 @@ AGVs = []
 
 def RFIDTrigger():
     
-    if SetPointX2==col and SetPointY2==row:
+    if SetPointX==col and SetPointY==row:
         to_send = bytearray([col,row])
         client.publish(topic,to_send)
     #elif SetPointX2 == col and SetPointY2 == row:
