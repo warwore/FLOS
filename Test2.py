@@ -1,6 +1,8 @@
 import pygame
 import button
 import csv 
+import paho.mqtt.client as mqtt
+import time
 import os
 
 from pathfinding.core.grid import Grid
@@ -34,6 +36,27 @@ scroll = 0
 scroll_speed = 1
 TILE_OFFSET = TILE_SIZE // 2
 game_paused = False
+
+client = "testRFID1"
+broker = "info8000.ga"
+topic = "FLOSCapstone/acl61582/RFID12"
+username = "giiuser"
+password = "giipassword"
+
+def onMessageRFID(client_obj, userdata, message):
+    x = int(message.payload[0])
+    y = int(message.payload[1])
+    print(f"The AGV is at ({x*TILE_SIZE},{y*TILE_SIZE})")
+
+client = mqtt.Client(client)
+client.on_message = onMessageRFID
+client.username_pw_set(username,password)
+client.connect(broker)
+client.subscribe(topic)
+SetPointX = 288 // TILE_SIZE
+SetPointY = 259 // TILE_SIZE
+SetPointX2 = 610 // TILE_SIZE
+SetPointY2 = 120 // TILE_SIZE
 
 #load images
 bg = pygame.image.load('graphics/background.png').convert_alpha()
@@ -129,6 +152,8 @@ class AGV(pygame.sprite.Sprite):
 
         
     def get_coord(self):
+        global col
+        global row
         col = self.rect.centerx // TILE_SIZE
         row = self.rect.centery // TILE_SIZE
         return (col,row)
@@ -184,6 +209,17 @@ class AGV(pygame.sprite.Sprite):
         self.battery -= .03 * self.speed #Decrease battery relative to AGV speed
                 
 AGVs = []
+
+def RFIDTrigger():
+    
+    if SetPointX==col and SetPointY==row:
+        to_send = bytearray([col,row])
+        client.publish(topic,to_send)
+    #elif SetPointX2 == col and SetPointY2 == row:
+        #to_send = bytearray([col,row])
+        #client.publish(topic,to_send)
+    else:
+        pass
 
 #Find number of consumption points
 def find_consumption(matrix):
@@ -274,10 +310,11 @@ back_button = button.Button(332, 450, back_img, 1)
 
 
 
-
+client.loop_start()
 #GAME LOOP
 setup = True #For grid
 path_draw = False #For drawing path
+scanning = False
 run = True
 while run:
 
@@ -399,6 +436,12 @@ while run:
         scroll -= 5
     if scroll_right == True and scroll < (MAX_COLS * TILE_SIZE) - SCREEN_WIDTH:
         scroll += 5
+    
+    if scanning == True:
+        #client.loop_forever()
+        #time.sleep(0.1)
+        RFIDTrigger()
+
 
     
 
@@ -427,6 +470,9 @@ while run:
                 scroll_left = True 
             if event.key == pygame.K_RIGHT:
                 scroll_right = True
+            #Scan for AGVS
+            if event.key == pygame.K_s:
+                scanning = True
             #pause
             if event.key == pygame.K_SPACE:
                 game_paused = True
@@ -435,6 +481,8 @@ while run:
                 scroll_left = False 
             if event.key == pygame.K_RIGHT:
                 scroll_right = False
+            #if event.key == pygame.K_s:
+                #scanning = False
             
         
         #Get world data
