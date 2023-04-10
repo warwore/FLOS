@@ -1,6 +1,7 @@
 import pygame
 import button
 import csv 
+import os
 
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
@@ -97,9 +98,13 @@ class AGV(pygame.sprite.Sprite):
         super().__init__()
         
         # basic
-        self.image = pygame.image.load('graphics/blue-circle.png').convert_alpha()
+        self.colors = ['red', 'blue', 'purple', 'orange', 'brown'] #Possible colors
+        self.color = self.colors[number] #
+        self.color_path = os.path.join('graphics/'+self.color+'-circle.png')
+        self.image = pygame.image.load(self.color_path).convert_alpha()
         self.image = pygame.transform.scale(self.image,(10, 10))
         self.rect = self.image.get_rect(center = (TILE_OFFSET + 25 * number,15*TILE_SIZE - TILE_OFFSET)) #Each AGV will get placed on a different block
+        
         
         # movement
         self.pos = self.rect.center
@@ -176,7 +181,7 @@ class AGV(pygame.sprite.Sprite):
         self.pos += self.direction * self.speed
         self.check_collisions()
         self.rect.center = self.pos
-        self.battery -= .01 * self.speed #Decrease battery relative to AGV speed
+        self.battery -= .03 * self.speed #Decrease battery relative to AGV speed
                 
 AGVs = []
 
@@ -333,7 +338,7 @@ while run:
                 elif AGV.sprite.get_coord()[0] == AGV.sprite.target_dropoff_x and AGV.sprite.get_coord()[1] == AGV.sprite.target_dropoff_y: #If the AGV is on the dropoff point
                         AGV.sprite.set_mode('idle') #It now needs to pickup
                 elif AGV.sprite.get_coord()[0] == AGV.sprite.recharge_x and AGV.sprite.get_coord()[1] == AGV.sprite.recharge_y:
-                    AGV.sprite.battery += 0.08 #Arbitrary
+                    AGV.sprite.battery += 0.18 #Arbitrary
                     if AGV.sprite.battery > 99: #if charged
                         AGV.sprite.set_mode('idle')
             
@@ -417,7 +422,7 @@ while run:
         if event.type == pygame.QUIT:
             run = False
         #keyboard presses
-        if event.type == pygame.KEYDOWN:
+        if event.type == pygame.KEYDOWN:    #Scrolling while the AGVs are moving does not function as intended
             if event.key == pygame.K_LEFT:
                 scroll_left = True 
             if event.key == pygame.K_RIGHT:
@@ -458,7 +463,8 @@ while run:
         #For testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_u:
-                print(AGVs[0].sprite.battery)
+                print(AGVs[0].sprite.color)
+                print(AGVs[0].sprite.color_path)
 
         #To create the AGVs 
         if event.type == pygame.KEYDOWN: 
@@ -476,7 +482,6 @@ while run:
             if event.key == pygame.K_EQUALS:
                 for AGV in AGVs:
                     AGV.sprite.speed *= 1.2
-                    print('he')
             if event.key == pygame.K_MINUS:
                 for AGV in AGVs:
                     AGV.sprite.speed /= 1.2
