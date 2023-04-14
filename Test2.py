@@ -75,9 +75,13 @@ WHITE = (255,255,255)
 BLACK = (0, 0, 0)
 ORANGE = (250, 213, 165)
 RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 128)
 
 #define fonts
 font = pygame.font.SysFont("arialblack", 40)
+battery_level_font = pygame.font.SysFont("arialblack", 20)
+battery_font = pygame.font.SysFont("arialblack", 10)
 
 #creat empty tile list
 world_data = []
@@ -131,7 +135,7 @@ class AGV(pygame.sprite.Sprite):
         
         # movement
         self.pos = self.rect.center
-        self.speed = 1.5
+        self.speed = 0.7
         self.direction = pygame.math.Vector2(0,0)
         self.battery = 100 #Initial battery
         self.compare_battery = 0 #Used to check if the battery has decreased
@@ -143,6 +147,9 @@ class AGV(pygame.sprite.Sprite):
         self.target_dropoff_x, self.target_dropoff_y = 0,0
         self.recharge_x, self.recharge_y = 0,0
         self.mode = 'idle'
+
+    def get_battery(self):
+        return round(self.battery, 1)
 
     def set_mode(self,mode): #Modes are 'picking up', 'dropping off', and 'driving'
         self.mode = mode
@@ -206,9 +213,27 @@ class AGV(pygame.sprite.Sprite):
         self.pos += self.direction * self.speed
         self.check_collisions()
         self.rect.center = self.pos
-        self.battery -= .03 * self.speed #Decrease battery relative to AGV speed
+        self.battery -= .007 * self.speed #Decrease battery relative to AGV speed
                 
-AGVs = []
+AGVs = [] #Create empty list to store the AGV objects
+
+battery_surf = [] #Create an empty list to store the battery indicators 
+battery_rect = []
+draw_battery = False
+
+battery_text = battery_level_font.render('Battery Levels', True, BLACK, ORANGE)
+battery_text_rect = battery_text.get_rect()
+battery_text_rect.center = (SCREEN_WIDTH + 150, SIDE_MARGIN - 50)
+
+def update_indicators():
+    for i in range(len(AGVs)):
+        battery_surf.append(battery_font.render(str(AGVs[i].sprite.get_battery())+ "%", True, BLACK, ORANGE))
+        battery_rect.append(battery_surf[i].get_rect())
+        battery_rect[i].center = (SCREEN_WIDTH + 50 + i * 50, SIDE_MARGIN)
+        screen.blit(battery_surf[i], battery_rect[i])
+        screen.blit(AGVs[i].sprite.image, (SCREEN_WIDTH + 40 + i * 50, SIDE_MARGIN - 30)) #Add agv image
+    battery_surf.clear()
+    battery_rect.clear()
 
 def RFIDTrigger():
     
@@ -320,15 +345,21 @@ while run:
 
     grid = Grid(matrix = world_data) #Get grid for pathfinding
 
-    #background
+    #Draw the background
     draw_bg()
 
+    #Draw the grid
     if setup:
         draw_grid()
 
     #if path_draw:
        # draw_path(path)  #paths arent really neccessary to draw
+    
+    #Draw the world (tiles)
     draw_world() 
+
+
+    
 
     #menu stuff
     if game_paused == True:
@@ -375,8 +406,8 @@ while run:
                 elif AGV.sprite.get_coord()[0] == AGV.sprite.target_dropoff_x and AGV.sprite.get_coord()[1] == AGV.sprite.target_dropoff_y: #If the AGV is on the dropoff point
                         AGV.sprite.set_mode('idle') #It now needs to pickup
                 elif AGV.sprite.get_coord()[0] == AGV.sprite.recharge_x and AGV.sprite.get_coord()[1] == AGV.sprite.recharge_y:
-                    AGV.sprite.battery += 0.18 #Arbitrary
-                    if AGV.sprite.battery > 99: #if charged
+                    AGV.sprite.battery += 0.1 #Arbitrary
+                    if AGV.sprite.battery > 98: #If sufficiently charged
                         AGV.sprite.set_mode('idle')
             
                     
@@ -421,6 +452,12 @@ while run:
 
     #draw tile panel and tiles
     pygame.draw.rect(screen, ORANGE, (SCREEN_WIDTH, 0, SIDE_MARGIN, SCREEN_HEIGHT))
+
+    #Draw the battery indicators
+    screen.blit(battery_text, battery_text_rect)
+    if draw_battery:
+        update_indicators()
+
 
     #choose a tile
     button_count = 0
@@ -511,8 +548,7 @@ while run:
         #For testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_u:
-                print(AGVs[0].sprite.color)
-                print(AGVs[0].sprite.color_path)
+                draw_battery = True
 
         #To create the AGVs 
         if event.type == pygame.KEYDOWN: 
