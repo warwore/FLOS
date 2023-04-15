@@ -1,3 +1,11 @@
+#Instructions:
+#After running, create your own factory layout, or load in the one that is currently saved. The simulation must contain an equal amount of pickup (yellow)
+#and dropoff (blue) points. The number of recharge points must equal the amount of pickup and dropoff points divided by two. Once the
+#points are configured, press A to spawn in the AGVs. Then, press U to see the battery indicators. Press W to remove the grid lines.
+
+
+
+
 import pygame
 import button
 import csv 
