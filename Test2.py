@@ -1,8 +1,17 @@
+#Instructions:
+#After running, create your own factory layout, or load in the one that is currently saved. The simulation must contain an equal amount of pickup (yellow)
+#and dropoff (blue) points. The number of recharge points must equal the amount of pickup and dropoff points divided by two. Once the
+#points are configured, press A to spawn in the AGVs. Then, press U to see the battery indicators. Press W to remove the grid lines.
+
+
+
+
 import pygame
 import button
 import csv 
 import paho.mqtt.client as mqtt
 import time
+import os
 
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
@@ -74,9 +83,13 @@ WHITE = (255,255,255)
 BLACK = (0, 0, 0)
 ORANGE = (250, 213, 165)
 RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 128)
 
 #define fonts
 font = pygame.font.SysFont("arialblack", 40)
+battery_level_font = pygame.font.SysFont("arialblack", 20)
+battery_font = pygame.font.SysFont("arialblack", 10)
 
 #creat empty tile list
 world_data = []
@@ -120,13 +133,17 @@ class AGV(pygame.sprite.Sprite):
         super().__init__()
         
         # basic
-        self.image = pygame.image.load('graphics/blue-circle.png').convert_alpha()
+        self.colors = ['red', 'blue', 'purple', 'orange', 'brown'] #Possible colors
+        self.color = self.colors[number] #
+        self.color_path = os.path.join('graphics/'+self.color+'-circle.png')
+        self.image = pygame.image.load(self.color_path).convert_alpha()
         self.image = pygame.transform.scale(self.image,(10, 10))
         self.rect = self.image.get_rect(center = (TILE_OFFSET + 25 * number,15*TILE_SIZE - TILE_OFFSET)) #Each AGV will get placed on a different block
         
+        
         # movement
         self.pos = self.rect.center
-        self.speed = 1.5
+        self.speed = 0.7
         self.direction = pygame.math.Vector2(0,0)
         self.battery = 100 #Initial battery
         self.compare_battery = 0 #Used to check if the battery has decreased
@@ -138,6 +155,9 @@ class AGV(pygame.sprite.Sprite):
         self.target_dropoff_x, self.target_dropoff_y = 0,0
         self.recharge_x, self.recharge_y = 0,0
         self.mode = 'idle'
+
+    def get_battery(self):
+        return round(self.battery, 1)
 
     def set_mode(self,mode): #Modes are 'picking up', 'dropping off', and 'driving'
         self.mode = mode
@@ -201,9 +221,27 @@ class AGV(pygame.sprite.Sprite):
         self.pos += self.direction * self.speed
         self.check_collisions()
         self.rect.center = self.pos
-        self.battery -= .01 * self.speed #Decrease battery relative to AGV speed
+        self.battery -= .007 * self.speed #Decrease battery relative to AGV speed
                 
-AGVs = []
+AGVs = [] #Create empty list to store the AGV objects
+
+battery_surf = [] #Create an empty list to store the battery indicators 
+battery_rect = []
+draw_battery = False
+
+battery_text = battery_level_font.render('Battery Levels', True, BLACK, ORANGE)
+battery_text_rect = battery_text.get_rect()
+battery_text_rect.center = (SCREEN_WIDTH + 150, SIDE_MARGIN - 50)
+
+def update_indicators():
+    for i in range(len(AGVs)):
+        battery_surf.append(battery_font.render(str(AGVs[i].sprite.get_battery())+ "%", True, BLACK, ORANGE))
+        battery_rect.append(battery_surf[i].get_rect())
+        battery_rect[i].center = (SCREEN_WIDTH + 50 + i * 50, SIDE_MARGIN)
+        screen.blit(battery_surf[i], battery_rect[i])
+        screen.blit(AGVs[i].sprite.image, (SCREEN_WIDTH + 40 + i * 50, SIDE_MARGIN - 30)) #Add agv image
+    battery_surf.clear()
+    battery_rect.clear()
 
 def RFIDTrigger():
     
@@ -315,15 +353,21 @@ while run:
 
     grid = Grid(matrix = world_data) #Get grid for pathfinding
 
-    #background
+    #Draw the background
     draw_bg()
 
+    #Draw the grid
     if setup:
         draw_grid()
 
     #if path_draw:
        # draw_path(path)  #paths arent really neccessary to draw
+    
+    #Draw the world (tiles)
     draw_world() 
+
+
+    
 
     #menu stuff
     if game_paused == True:
@@ -370,8 +414,8 @@ while run:
                 elif AGV.sprite.get_coord()[0] == AGV.sprite.target_dropoff_x and AGV.sprite.get_coord()[1] == AGV.sprite.target_dropoff_y: #If the AGV is on the dropoff point
                         AGV.sprite.set_mode('idle') #It now needs to pickup
                 elif AGV.sprite.get_coord()[0] == AGV.sprite.recharge_x and AGV.sprite.get_coord()[1] == AGV.sprite.recharge_y:
-                    AGV.sprite.battery += 0.08 #Arbitrary
-                    if AGV.sprite.battery > 99: #if charged
+                    AGV.sprite.battery += 0.1 #Arbitrary
+                    if AGV.sprite.battery > 98: #If sufficiently charged
                         AGV.sprite.set_mode('idle')
             
                     
@@ -417,6 +461,12 @@ while run:
     #draw tile panel and tiles
     pygame.draw.rect(screen, ORANGE, (SCREEN_WIDTH, 0, SIDE_MARGIN, SCREEN_HEIGHT))
 
+    #Draw the battery indicators
+    screen.blit(battery_text, battery_text_rect)
+    if draw_battery:
+        update_indicators()
+
+
     #choose a tile
     button_count = 0
     for button_count, i in enumerate(button_list):
@@ -460,7 +510,7 @@ while run:
         if event.type == pygame.QUIT:
             run = False
         #keyboard presses
-        if event.type == pygame.KEYDOWN:
+        if event.type == pygame.KEYDOWN:    #Scrolling while the AGVs are moving does not function as intended
             if event.key == pygame.K_LEFT:
                 scroll_left = True 
             if event.key == pygame.K_RIGHT:
@@ -506,7 +556,7 @@ while run:
         #For testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_u:
-                print(AGVs[0].sprite.battery)
+                draw_battery = True
 
         #To create the AGVs 
         if event.type == pygame.KEYDOWN: 
@@ -524,7 +574,6 @@ while run:
             if event.key == pygame.K_EQUALS:
                 for AGV in AGVs:
                     AGV.sprite.speed *= 1.2
-                    print('he')
             if event.key == pygame.K_MINUS:
                 for AGV in AGVs:
                     AGV.sprite.speed /= 1.2
