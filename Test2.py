@@ -127,6 +127,24 @@ def draw_world():
             if tile <= TILE_TYPES - 1: #Updated
                 screen.blit(img_list[tile], (x * TILE_SIZE - scroll, y * TILE_SIZE) ) 
 
+RFID_paths = 'graphics/RFID_IMG.png'
+RFID_list = []
+RFID_num = int(input('How Many RFIDs are there? (Please enter a number)'))
+
+class RFID(pygame.sprite.Sprite):
+    def __init__(self,RFID_paths,x_pos,y_pos):
+        super().__init__()
+
+        self.image = pygame.image.load(RFID_paths).convert_alpha()
+        self.image = pygame.transform.scale(self.image,(TILE_SIZE,TILE_SIZE))
+        self.rect = self.image.get_rect()
+        self.rect.center = [x_pos,y_pos]
+    
+    def draw(self,surface):
+        surface.blit(self.image,self.rect)
+
+
+
 #create agv class                
 class AGV(pygame.sprite.Sprite):
     def __init__(self, number):
@@ -222,6 +240,15 @@ class AGV(pygame.sprite.Sprite):
         self.check_collisions()
         self.rect.center = self.pos
         self.battery -= .007 * self.speed #Decrease battery relative to AGV speed
+
+#A1 = AGV()
+RFIDs = pygame.sprite.Group()
+for rfid in range(RFID_num):
+    new_RFID = RFID(RFID_paths,int(input("What is the x coordinate for the RFID?")),int(input("What is the y coordinate for the RFID?")))
+    RFIDs.add(new_RFID)
+#AGVS = pygame.sprite.Group()
+#AGVS.add(A1)
+
                 
 AGVs = [] #Create empty list to store the AGV objects
 
@@ -245,12 +272,9 @@ def update_indicators():
 
 def RFIDTrigger():
     
-    if SetPointX==col and SetPointY==row:
-        to_send = bytearray([col,row])
-        client.publish(topic,to_send)
-    #elif SetPointX2 == col and SetPointY2 == row:
-        #to_send = bytearray([col,row])
-        #client.publish(topic,to_send)
+    if pygame.sprite.groupcollide(RFIDs,AGVS,False,False):
+        to_send = bytearray(topic,[int(RFID.rect())])
+        client.publish(topic,to_send) 
     else:
         pass
 
@@ -365,6 +389,9 @@ while run:
     
     #Draw the world (tiles)
     draw_world() 
+
+    if RFID:
+        RFIDs.draw(screen)
 
 
     
