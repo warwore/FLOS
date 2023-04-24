@@ -12,7 +12,6 @@ import csv
 import paho.mqtt.client as mqtt
 import time
 import os
-import math
 
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
@@ -46,22 +45,35 @@ scroll_speed = 1
 TILE_OFFSET = TILE_SIZE // 2
 game_paused = False
 
-client = "testRFID1"
-broker = "info8000.ga"
-topic = "FLOSCapstone/acl61582/RFID12"
+clientRFID = "testRFID1"
+clientANTENNA = "testANTENNA1"
+broker = "test.mosquitto.org"
+topicRFID = "FLOSCapstone/acl61582/RFID1"
+topicANTENNA = "FLOSCapstone/acl61582/ANTENNA1"
 username = "giiuser"
 password = "giipassword"
 
 def onMessageRFID(client_obj, userdata, message):
-    x = int(message.payload[0])
-    y = int(message.payload[1])
-    print(f"The AGV is at ({x*TILE_SIZE},{y*TILE_SIZE})")
+    x,y,to_send_byte = unpack('ii 6s',message.payload)
+    AGV_col = str(to_send_byte,'utf-8')
+    print(f"The {AGV_col} AGV is at ({x*4},{y*2})")
 
-#client = mqtt.Client(client)
-#client.on_message = onMessageRFID
+def onMessageANTENNA(client_obj, userdata, message):
+    x,y,to_send_byte = unpack('ii 6s',message.payload)
+    AGV_col = str(to_send_byte,'utf-8')
+    print(f"The {AGV_col} AGV is at ({x*4},{y*2})")
+
+clientRFID = mqtt.Client(clientRFID)
+clientRFID.on_message = onMessageRFID
 #client.username_pw_set(username,password)
-#client.connect(broker)
-#client.subscribe(topic)
+clientRFID.connect(broker)
+clientRFID.subscribe(topicRFID)
+
+client = mqtt.Client(client)
+client.on_message = onMessageRFID
+client.username_pw_set(username,password)
+client.connect(broker)
+client.subscribe(topic)
 SetPointX = 288 // TILE_SIZE
 SetPointY = 259 // TILE_SIZE
 SetPointX2 = 610 // TILE_SIZE
@@ -128,6 +140,31 @@ def draw_world():
             if tile <= TILE_TYPES - 1: #Updated
                 screen.blit(img_list[tile], (x * TILE_SIZE - scroll, y * TILE_SIZE) ) 
 
+RFID_path = 'graphics/RFID_IMG.png'
+RFID_list = []
+RFID_num = int(input('How Many RFIDs are there? (Please enter a number)'))
+
+class RFID(pygame.sprite.Sprite):
+    def __init__(self,RFID_path,x_pos,y_pos):
+        super().__init__()
+
+        self.image = pygame.image.load(RFID_path).convert_alpha()
+        self.image = pygame.transform.scale(self.image,(TILE_SIZE,TILE_SIZE))
+        self.rect = self.image.get_rect()
+        self.rect.center = [x_pos,y_pos]
+        self.pos = self.rect.center
+    
+    def draw(self,surface):
+        surface.blit(self.image,self.rect)
+
+    def spot(self):
+        self.pos_x = self.rect.centerx
+        self.pos_y = self.rect.centery 
+        return (self.pos_x,self.pos_y)
+    
+
+
+
 #create agv class                
 class AGV(pygame.sprite.Sprite):
     def __init__(self, number):
@@ -138,7 +175,7 @@ class AGV(pygame.sprite.Sprite):
         self.color = self.colors[number] #
         self.color_path = os.path.join('graphics/'+self.color+'-circle.png')
         self.image = pygame.image.load(self.color_path).convert_alpha()
-        self.image = pygame.transform.scale(self.image,(10, 10))
+        self.image = pygame.transform.scale(self.image,(11, 11))
         self.rect = self.image.get_rect(center = (TILE_OFFSET + 25 * number,15*TILE_SIZE - TILE_OFFSET)) #Each AGV will get placed on a different block
         
         
@@ -168,8 +205,6 @@ class AGV(pygame.sprite.Sprite):
 
         
     def get_coord(self):
-        global col
-        global row
         col = self.rect.centerx // TILE_SIZE
         row = self.rect.centery // TILE_SIZE
         return (col,row)
@@ -223,8 +258,14 @@ class AGV(pygame.sprite.Sprite):
         self.check_collisions()
         self.rect.center = self.pos
         self.battery -= .007 * self.speed #Decrease battery relative to AGV speed
-                
 AGVs = [] #Create empty list to store the AGV objects
+RFIDs = pygame.sprite.Group()
+for rfid in range(RFID_num):
+    new_RFID = RFID(RFID_path,int(input("What is the x coordinate for the RFID?")),int(input("What is the y coordinate for the RFID?")))
+    RFIDs.add(new_RFID)
+print(len(RFIDs))
+                
+#AGVs = [] #Create empty list to store the AGV objects
 
 battery_surf = [] #Create an empty list to store the battery indicators 
 battery_rect = []
@@ -246,14 +287,18 @@ def update_indicators():
 
 def RFIDTrigger():
     
-    if SetPointX==col and SetPointY==row:
-        to_send = bytearray([col,row])
-        client.publish(topic,to_send)
-    #elif SetPointX2 == col and SetPointY2 == row:
-        #to_send = bytearray([col,row])
-        #client.publish(topic,to_send)
+    for i in range(len(AGVs)):
+        for AGV in (AGVs[i]):
+
+            if pygame.sprite.spritecollideany(AGV,RFIDs):
+                x = ((AGVs[i].sprite.rect.x)) // 4
+                y = (AGVs[i].sprite.rect.y)   // 2
+                to_send_string = AGVs[i].sprite.color
+                to_send_byte = bytes(to_send_string,'utf-8')
+                to_send = pack('2i 6s',x,y,to_send_byte)
+                clientRFID.publish(topicRFID,to_send)                
     else:
-        pass
+        return
 
 #Find number of consumption points
 def find_consumption(matrix):
@@ -350,7 +395,7 @@ back_button = button.Button(332, 450, back_img, 1)
 
 
 
-#client.loop_start()
+client.loop_start()
 #GAME LOOP
 setup = True #For grid
 path_draw = False #For drawing path
@@ -372,6 +417,9 @@ while run:
     
     #Draw the world (tiles)
     draw_world() 
+
+    if RFID:
+        RFIDs.draw(screen)
 
 
     
@@ -525,6 +573,7 @@ while run:
             #Scan for AGVS
             if event.key == pygame.K_s:
                 scanning = True
+                print("scanning started")
             #pause
             if event.key == pygame.K_SPACE:
                 game_paused = True
@@ -559,6 +608,7 @@ while run:
                 print(AGVs[0].sprite.get_coord())
                 print(AGVs[0].sprite.recharge_x)
                 print(AGVs[0].sprite.recharge_y)
+                print(AGVs[0].sprite.rect)
 
         #For testing       
         if event.type == pygame.KEYDOWN: 
