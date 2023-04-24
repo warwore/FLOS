@@ -12,6 +12,7 @@ import csv
 import paho.mqtt.client as mqtt
 import time
 import os
+import math
 
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
@@ -56,11 +57,11 @@ def onMessageRFID(client_obj, userdata, message):
     y = int(message.payload[1])
     print(f"The AGV is at ({x*TILE_SIZE},{y*TILE_SIZE})")
 
-client = mqtt.Client(client)
-client.on_message = onMessageRFID
-client.username_pw_set(username,password)
-client.connect(broker)
-client.subscribe(topic)
+#client = mqtt.Client(client)
+#client.on_message = onMessageRFID
+#client.username_pw_set(username,password)
+#client.connect(broker)
+#client.subscribe(topic)
 SetPointX = 288 // TILE_SIZE
 SetPointY = 259 // TILE_SIZE
 SetPointX2 = 610 // TILE_SIZE
@@ -304,6 +305,12 @@ def draw_path(path):
 
 finder = AStarFinder(diagonal_movement=DiagonalMovement.always) 
 
+def mqtt_convert(x,y):
+    x1 = x * 9965.36/SCREEN_WIDTH
+    y1 = (SCREEN_HEIGHT - y) * 3616.96/SCREEN_HEIGHT
+
+    return(math.ceil(x1),math.ceil(y1))
+
 
 #creat buttons
 save_button = button.Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT + LOWER_MARGIN - 50, save_img, 1)
@@ -343,7 +350,7 @@ back_button = button.Button(332, 450, back_img, 1)
 
 
 
-client.loop_start()
+#client.loop_start()
 #GAME LOOP
 setup = True #For grid
 path_draw = False #For drawing path
@@ -583,9 +590,10 @@ while run:
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_z:
                 print(pygame.mouse.get_pos())
-                row = pygame.mouse.get_pos()[1]//TILE_SIZE
-                col = pygame.mouse.get_pos()[0]//TILE_SIZE
+                row = pygame.mouse.get_pos()[1]
+                col = pygame.mouse.get_pos()[0]
                 print(row,col)
+                print(mqtt_convert(col,row))
                  
     
     
