@@ -46,24 +46,29 @@ scroll_speed = 1
 TILE_OFFSET = TILE_SIZE // 2
 game_paused = False
 
-client = "testRFID1"
+clientRFID = "testRFID1"
+clientANTENNA = "testANTENNA1"
 broker = "test.mosquitto.org"
-topic = "FLOSCapstone/acl61582/RFID12"
+topicRFID = "FLOSCapstone/acl61582/RFID1"
+topicANTENNA = "FLOSCapstone/acl61582/ANTENNA1"
 username = "giiuser"
 password = "giipassword"
 
 def onMessageRFID(client_obj, userdata, message):
-    #message = unpack('>hh',message.payload)
-    x = int(message.payload[0])
-    y = int(message.payload[1])
-    print("message received")
-    print(f"The AGV is at ({x*4},{y*2})")
+    x,y,to_send_byte = unpack('ii 6s',message.payload)
+    AGV_col = str(to_send_byte,'utf-8')
+    print(f"The {AGV_col} AGV is at ({x*4},{y*2})")
 
-client = mqtt.Client(client)
-client.on_message = onMessageRFID
+def onMessageANTENNA(client_obj, userdata, message):
+    x,y,to_send_byte = unpack('ii 6s',message.payload)
+    AGV_col = str(to_send_byte,'utf-8')
+    print(f"The {AGV_col} AGV is at ({x*4},{y*2})")
+
+clientRFID = mqtt.Client(clientRFID)
+clientRFID.on_message = onMessageRFID
 #client.username_pw_set(username,password)
-client.connect(broker)
-client.subscribe(topic)
+clientRFID.connect(broker)
+clientRFID.subscribe(topicRFID)
 
 
 #load images
@@ -246,18 +251,11 @@ class AGV(pygame.sprite.Sprite):
         self.rect.center = self.pos
         self.battery -= .007 * self.speed #Decrease battery relative to AGV speed
 AGVs = [] #Create empty list to store the AGV objects
-aGVS = pygame.sprite.Group()
-#for num in range((5)):
-#    A1 = AGV(num)
-#    aGVS.add(A1)
-#print(len(AGVS))
 RFIDs = pygame.sprite.Group()
 for rfid in range(RFID_num):
     new_RFID = RFID(RFID_path,int(input("What is the x coordinate for the RFID?")),int(input("What is the y coordinate for the RFID?")))
     RFIDs.add(new_RFID)
 print(len(RFIDs))
-#AGVS = pygame.sprite.Group()
-#AGVS.add(A1)
                 
 #AGVs = [] #Create empty list to store the AGV objects
 
@@ -287,9 +285,10 @@ def RFIDTrigger():
             if pygame.sprite.spritecollideany(AGV,RFIDs):
                 x = ((AGVs[i].sprite.rect.x)) // 4
                 y = (AGVs[i].sprite.rect.y)   // 2
-                to_send = bytearray([x,y])
-                client.publish(topic,to_send)
-                
+                to_send_string = AGVs[i].sprite.color
+                to_send_byte = bytes(to_send_string,'utf-8')
+                to_send = pack('2i 6s',x,y,to_send_byte)
+                clientRFID.publish(topicRFID,to_send)                
     else:
         return
 
@@ -382,7 +381,7 @@ back_button = button.Button(332, 450, back_img, 1)
 
 
 
-client.loop_start()
+clientRFID.loop_start()
 #GAME LOOP
 setup = True #For grid
 path_draw = False #For drawing path
@@ -592,11 +591,10 @@ while run:
         #For testing       
         if event.type == pygame.KEYDOWN: 
             if event.key == pygame.K_y:
-                #print(AGVs[0].sprite.get_coord())
-                #print(AGVs[0].sprite.recharge_x)
-                #print(AGVs[0].sprite.recharge_y)
-                #print(AGVs[0].sprite.rect)
-                print(RFID.spot(RFIDs))
+                print(AGVs[0].sprite.get_coord())
+                print(AGVs[0].sprite.recharge_x)
+                print(AGVs[0].sprite.recharge_y)
+                print(AGVs[0].sprite.rect)
 
         #For testing       
         if event.type == pygame.KEYDOWN: 
@@ -608,9 +606,7 @@ while run:
             if event.key == pygame.K_a:
                 number = find_consumption(world_data) // 2 #How many AGVs to make. Ideally, each AGV has their own unique drop off and pick up point
                 for i in range(number):
-                    aGVS.add(AGV(i))
                     AGVs.append(pygame.sprite.GroupSingle(AGV(number=i)))
-                    #aGVS.add(AGVs)
                 for i in range(len(AGVs)): #This assumes that each agv gets their own pickup and dropoff point
                     AGVs[i].sprite.set_dropoff(find_dropoff(world_data)[i][0], find_dropoff(world_data)[i][1])
                     AGVs[i].sprite.set_pickup(find_pickup(world_data)[i][0], find_pickup(world_data)[i][1])
