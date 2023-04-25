@@ -2,6 +2,7 @@
 #After running, create your own factory layout, or load in the one that is currently saved. The simulation must contain an equal amount of pickup (yellow)
 #and dropoff (blue) points. The number of recharge points must equal the amount of pickup and dropoff points divided by two. Once the
 #points are configured, press A to spawn in the AGVs. Then, press U to see the battery indicators. Press W to remove the grid lines.
+#Pressing s on the keyboard once A is pressed starts the scanning process. Input values in cm for the coordinates and diamter for the RFID and antenna.
 
 
 
@@ -56,18 +57,15 @@ username = "giiuser"
 password = "giipassword"
 
 def onMessageRFID(client_obj, userdata, message):
-    if message.topic == topicRFID:
-        x,y,to_send_byte = unpack('ii 6s',message.payload)
-        AGV_col = str(to_send_byte,'utf-8')
-        x_cm, y_cm = mqtt_convert(x,y)
-        print(f"The {AGV_col} AGV is at ({x_cm*4},{y_cm*2}) (RFID)")
+    x,y,to_send_byte = unpack('ii 6s',message.payload)
+    AGV_col = str(to_send_byte,'utf-8')
+    print(f"The {AGV_col} AGV is at ({x},{y}) (RFID)")
 
 
 def onMessageANTENNA(client_obj, userdata, message):
     x,y,to_send_byte = unpack('ii 6s',message.payload)
     AGV_col = str(to_send_byte,'utf-8')
-    x_cm, y_cm = mqtt_convert(x,y)
-    print(f"The {AGV_col} AGV is at ({x_cm*4},{y_cm*2}) (antenna)")
+    print(f"The {AGV_col} AGV is at ({x},{y}) (antenna)")
 
 clientRFID = mqtt.Client(clientRFID)
 clientANTENNA = mqtt.Client(clientANTENNA)
@@ -141,6 +139,15 @@ def draw_world():
         for x, tile in enumerate(row):
             if tile <= TILE_TYPES - 1: #Updated
                 screen.blit(img_list[tile], (x * TILE_SIZE - scroll, y * TILE_SIZE) ) 
+
+def mqtt_convert_backx(x):
+    x1 = x*SCREEN_WIDTH/9965.36
+
+    return(math.ceil(x1))
+def mqtt_convert_backy(y):
+    y1 = SCREEN_HEIGHT - y*(SCREEN_HEIGHT/3616.96)
+
+    return(math.ceil(y1))
 
 RFID_path = 'graphics/RFID_IMG.png'
 RFID_num = int(input('How Many RFIDs are there? (Please enter a number)'))
@@ -274,13 +281,14 @@ class AGV(pygame.sprite.Sprite):
 AGVs = [] #Create empty list to store the AGV objects
 RFIDs = pygame.sprite.Group()
 for rfid in range(RFID_num):
-    new_RFID = RFID(RFID_path,int(input("What is the x coordinate for the RFID?")),int(input("What is the y coordinate for the RFID?")))
+    new_RFID = RFID(RFID_path,int(mqtt_convert_backx(float(input("What is the x coordinate for the RFID?")))),
+                    int(mqtt_convert_backy(float(input("What is the y coordinate for the RFID?")))))
     RFIDs.add(new_RFID)
 ANTENNAs = pygame.sprite.Group()
 for antennas in range (ANTENNA_num):
-    new_ANTENNA = ANTENNA(ANTENNA_path,int(input("What is the x coordinate of the center of the antenna?")),
-                           int(input("What is the y coordinate of the center of the antenna?")),
-                           int(input("What is the diameter of the antenna?")))
+    new_ANTENNA = ANTENNA(ANTENNA_path,int(mqtt_convert_backx(float(input("What is the x coordinate of the center of the antenna?")))),
+                           int(mqtt_convert_backx(float(input("What is the y coordinate of the center of the antenna?")))),
+                           int(mqtt_convert_backx(float(input("What is the diameter of the antenna?")))))
     ANTENNAs.add(new_ANTENNA)
 print(len(ANTENNAs))
                 
@@ -308,8 +316,11 @@ def RFIDTrigger():
     for i in range(len(AGVs)):
         for AGV in (AGVs[i]):
             if pygame.sprite.spritecollideany(AGV,RFIDs):
-                x = ((AGVs[i].sprite.rect.x)) // 4
-                y =(AGVs[i].sprite.rect.y)   // 2
+                x_AGV = ((AGVs[i].sprite.rect.x))
+                y_AGV =(AGVs[i].sprite.rect.y)   
+                x,y = mqtt_convert(x_AGV,y_AGV)
+                x = int(x)
+                y = int(y)
                 to_send_string = AGVs[i].sprite.color
                 to_send_byte = bytes(to_send_string,'utf-8')
                 to_send = pack('2i 6s',x,y,to_send_byte)
@@ -330,8 +341,11 @@ def ANTENNATrigger():
                 DX = XN - XC
                 DY = YN - YC
                 if (DX**2 + DY**2) <= ((ANTENNA.diameter)/2)**2:
-                    x = ((AGVs[i].sprite.rect.x)) // 4
-                    y =(AGVs[i].sprite.rect.y)   // 2
+                    x_AGV = ((AGVs[i].sprite.rect.x))
+                    y_AGV =(AGVs[i].sprite.rect.y)
+                    x,y = mqtt_convert(x_AGV,y_AGV)
+                    x = int(x)
+                    y = int(y)  
                     to_send_string = AGVs[i].sprite.color
                     to_send_byte = bytes(to_send_string,'utf-8')
                     to_send = pack('2i 6s',x,y,to_send_byte)
