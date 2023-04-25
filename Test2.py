@@ -11,12 +11,8 @@ import button
 import csv 
 import paho.mqtt.client as mqtt
 import time
-<<<<<<< HEAD
 import os   
 from struct import *
-=======
-import os
->>>>>>> 288989d68b4a662bad9ee2f0a57eb899c9f888e4
 import math
 
 from pathfinding.core.grid import Grid
@@ -73,7 +69,6 @@ def onMessageANTENNA(client_obj, userdata, message):
     x_cm, y_cm = mqtt_convert(x,y)
     print(f"The {AGV_col} AGV is at ({x_cm*4},{y_cm*2}) (antenna)")
 
-<<<<<<< HEAD
 clientRFID = mqtt.Client(clientRFID)
 clientANTENNA = mqtt.Client(clientANTENNA)
 clientRFID.on_message = onMessageRFID
@@ -83,23 +78,8 @@ clientRFID.connect(broker)
 clientANTENNA.connect(broker)
 clientRFID.subscribe(topicRFID)
 clientANTENNA.subscribe(topicANTENNA)
-=======
-#clientRFID = mqtt.Client(clientRFID)
-#clientRFID.on_message = onMessageRFID
-#client.username_pw_set(username,password)
-#clientRFID.connect(broker)
-#clientRFID.subscribe(topicRFID)
->>>>>>> 288989d68b4a662bad9ee2f0a57eb899c9f888e4
 
-#client = mqtt.Client(client)
-##client.on_message = onMessageRFID
-#client.username_pw_set(username,password)
-#client.connect(broker)
-#client.subscribe(topic)
-SetPointX = 288 // TILE_SIZE
-SetPointY = 259 // TILE_SIZE
-SetPointX2 = 610 // TILE_SIZE
-SetPointY2 = 120 // TILE_SIZE
+
 
 #load images
 bg = pygame.image.load('graphics/background.png').convert_alpha()
@@ -163,8 +143,7 @@ def draw_world():
                 screen.blit(img_list[tile], (x * TILE_SIZE - scroll, y * TILE_SIZE) ) 
 
 RFID_path = 'graphics/RFID_IMG.png'
-RFID_list = []
-#RFID_num = int(input('How Many RFIDs are there? (Please enter a number)'))
+RFID_num = int(input('How Many RFIDs are there? (Please enter a number)'))
 
 class RFID(pygame.sprite.Sprite):
     def __init__(self,RFID_path,x_pos,y_pos):
@@ -294,7 +273,6 @@ class AGV(pygame.sprite.Sprite):
         self.battery -= .007 * self.speed #Decrease battery relative to AGV speed
 AGVs = [] #Create empty list to store the AGV objects
 RFIDs = pygame.sprite.Group()
-<<<<<<< HEAD
 for rfid in range(RFID_num):
     new_RFID = RFID(RFID_path,int(input("What is the x coordinate for the RFID?")),int(input("What is the y coordinate for the RFID?")))
     RFIDs.add(new_RFID)
@@ -305,12 +283,6 @@ for antennas in range (ANTENNA_num):
                            int(input("What is the diameter of the antenna?")))
     ANTENNAs.add(new_ANTENNA)
 print(len(ANTENNAs))
-=======
-#for rfid in range(RFID_num):
-    #new_RFID = RFID(RFID_path,int(input("What is the x coordinate for the RFID?")),int(input("What is the y coordinate for the RFID?")))
-    #RFIDs.add(new_RFID)
-#print(len(RFIDs))
->>>>>>> 288989d68b4a662bad9ee2f0a57eb899c9f888e4
                 
 #AGVs = [] #Create empty list to store the AGV objects
 
@@ -464,12 +436,8 @@ back_button = button.Button(332, 450, back_img, 1)
 
 
 
-<<<<<<< HEAD
 clientRFID.loop_start()
 clientANTENNA.loop_start()
-=======
-#client.loop_start()
->>>>>>> 288989d68b4a662bad9ee2f0a57eb899c9f888e4
 #GAME LOOP
 setup = True #For grid
 path_draw = False #For drawing path
