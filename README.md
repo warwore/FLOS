@@ -12,7 +12,7 @@ The virtual test environment will contain the layout of the factory and all the 
 
 How to use:
 
-Each AGV requires 1 pick up point, 1 drop off point, and 1 recharge point. One you have placed your points and created your factory layout, press A to spawn in the AGVs and watch them navigate between consumption points. Press U to show the battery indicators for each AGV. Speed up and slow down the simulation up the + and - keys respectively.
+Each AGV requires 1 pick up point, 1 drop off point, and 1 recharge point. One you have placed your points and created your factory layout, press A to spawn in the AGVs and watch them navigate between consumption points. Press U to show the battery indicators for each AGV. Speed up and slow down the simulation by using the + and - keys respectively.
 
 
 
