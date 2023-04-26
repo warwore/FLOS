@@ -48,11 +48,11 @@ scroll_speed = 1
 TILE_OFFSET = TILE_SIZE // 2
 game_paused = False
 
-clientRFID = "testRFIDMain"
-clientANTENNA = "testANTENNAMain"
+clientRFID = "testRFIDBackup1"
+clientANTENNA = "testANTENNABackup1"
 broker = 'eduoracle.ugavel.com'
-topicRFID = "FLOSCapstone/acl61582/RFIDMain"
-topicANTENNA = "FLOSCapstone/acl61582/ANTENNAMain"
+topicRFID = "FLOSCapstone/acl61582/RFIDBackup1"
+topicANTENNA = "FLOSCapstone/acl61582/ANTENNABackup1"
 username = "giiuser"
 password = "giipassword"
 
