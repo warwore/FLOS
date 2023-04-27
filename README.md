@@ -12,20 +12,16 @@ The virtual test environment will contain the layout of the factory and all the 
 
 How to use:
 
-Start drawing a path by pressing 'a' continue adding points to the path by hovering mouse over where you want the point
-
-End the path drawing by pressing 'd' 
-
-Reset the path and clear the screen by pressing 'r'
-
-Clear the path by pressing 'c'.
+Each AGV requires 1 pick up point, 1 drop off point, and 1 recharge point. One you have placed your points and created your factory layout, press A to spawn in the AGVs and watch them navigate between consumption points. Press U to show the battery indicators for each AGV. Speed up and slow down the simulation by using the + and - keys respectively.
 
 
 
-As of now:
+Placeable Objects:
 
-Red rectangles = Obstacles
+Black squares = Obstacles
 
-Green rectangles = Pickup points
+Yellow squares = Pickup points
 
-Blue rectangles = Dropoff points 
+Blue squares = Dropoff points 
+
+Green squares = Recharge points
