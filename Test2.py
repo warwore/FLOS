@@ -47,7 +47,7 @@ scroll = 0
 scroll_speed = 1
 TILE_OFFSET = TILE_SIZE // 2
 game_paused = False
-
+#nMqtt broker and client information
 clientRFID = "testRFIDMain"
 clientANTENNA = "testANTENNAMain"
 broker = 'eduoracle.ugavel.com'
@@ -55,18 +55,21 @@ topicRFID = "FLOSCapstone/acl61582/RFIDMain"
 topicANTENNA = "FLOSCapstone/acl61582/ANTENNAMain"
 username = "giiuser"
 password = "giipassword"
-
+# Handles the messages recieved for the RFID sprite group
+# Ideally this data is handled by a separate program such as Locera
+# Used for demonstration purposes
 def onMessageRFID(client_obj, userdata, message):
     x,y,to_send_byte = unpack('ii 6s',message.payload)
     AGV_col = str(to_send_byte,'utf-8')
     print(f"The {AGV_col} AGV is at ({x},{y}) (RFID)")
 
-
+# Same function as above except it handles the messages recieved from Antenna collision
 def onMessageANTENNA(client_obj, userdata, message):
     x,y,to_send_byte = unpack('ii 6s',message.payload)
     AGV_col = str(to_send_byte,'utf-8')
     print(f"The {AGV_col} AGV is at ({x},{y}) (antenna)")
-
+#Handles all MQTT connections and subscriptions
+# Subscriptions not needed if data will not be printed or processed in terminal window
 clientRFID = mqtt.Client(clientRFID)
 clientANTENNA = mqtt.Client(clientANTENNA)
 clientRFID.on_message = onMessageRFID
@@ -140,45 +143,51 @@ def draw_world():
         for x, tile in enumerate(row):
             if tile <= TILE_TYPES - 1: #Updated
                 screen.blit(img_list[tile], (x * TILE_SIZE - scroll, y * TILE_SIZE) ) 
-
+#Takes cm measurements and converts to pixel values in program. Change 9965.36 to whatever x dimension of factory floor is
 def mqtt_convert_backx(x):
     x1 = x*SCREEN_WIDTH/9965.36
 
     return(math.ceil(x1))
+#Same as the function above but for the y-coordinate. Also handles flipping the axis from Locera format (bottom left)
+# to Pygame format(top left)
 def mqtt_convert_backy(y):
     y1 = SCREEN_HEIGHT - y*(SCREEN_HEIGHT/3616.96)
 
     return(math.ceil(y1))
-
+#Defines RFID path and number. Make sure the path contains an image for the RFID
 RFID_path = 'graphics/RFID_IMG.png'
 RFID_num = int(input('How Many RFIDs are there? (Please enter a number)'))
-
+# Creates the RFID sprite
+# Needs an image path, x-coordinate (in pixels) and y coordinate (in pixels)
+# Measurement transformation handled elsewhere
 class RFID(pygame.sprite.Sprite):
     def __init__(self,RFID_path,x_pos,y_pos):
         super().__init__()
-
+# Key features of the RFID sprite are defined
         self.image = pygame.image.load(RFID_path).convert_alpha()
         self.image = pygame.transform.scale(self.image,(TILE_SIZE,TILE_SIZE))
         self.rect = self.image.get_rect()
         self.rect.center = [x_pos,y_pos]
-        self.pos = self.rect.center
-    
+# Defines the draw function that places them on the screen when called    
     def draw(self,surface):
         surface.blit(self.image,self.rect)
 
-
+# Antenna path and number 
 ANTENNA_num = int(input("How many Antennas are there?"))
 ANTENNA_path = 'graphics/Black_Circle_Antenna.png'
+# Creates the Antenna sprite
+# Needs an image path, x-coordinate(in pixels), and y-coordinate (in pixels)
+#Diameter used, could be switched to radius. Changes Antenna trigger function slightly
 class ANTENNA(pygame.sprite.Sprite):
     def __init__(self,ANTENNA_path,x,y,diameter):
         super().__init__()
-        
+# Key features of Antenna sprite     
         self.image = pygame.image.load(ANTENNA_path).convert_alpha(screen)
         self.image = pygame.transform.scale(self.image,(diameter,diameter))
         self.rect = self.image.get_rect()
         self.rect.center = [x,y]  
         self.diameter = diameter
-
+# Draws on the screen when called
     def draw(self,surface):
         surface.blit(self.image,self.rect)
 
@@ -280,18 +289,18 @@ class AGV(pygame.sprite.Sprite):
         self.rect.center = self.pos
         self.battery -= .007 * self.speed #Decrease battery relative to AGV speed
 AGVs = [] #Create empty list to store the AGV objects
-RFIDs = pygame.sprite.Group()
-for rfid in range(RFID_num):
-    new_RFID = RFID(RFID_path,int(mqtt_convert_backx(float(input("What is the x coordinate for the RFID?")))),
-                    int(mqtt_convert_backy(float(input("What is the y coordinate for the RFID?")))))
-    RFIDs.add(new_RFID)
-ANTENNAs = pygame.sprite.Group()
-for antennas in range (ANTENNA_num):
-    new_ANTENNA = ANTENNA(ANTENNA_path,int(mqtt_convert_backx(float(input("What is the x coordinate of the center of the antenna?")))),
-                           int(mqtt_convert_backx(float(input("What is the y coordinate of the center of the antenna?")))),
-                           int(mqtt_convert_backx(float(input("What is the diameter of the antenna?")))))
-    ANTENNAs.add(new_ANTENNA)
-print(len(ANTENNAs))
+RFIDs = pygame.sprite.Group()  # Creates a group to place new_RFID in
+for rfid in range(RFID_num):  # Iterates through the number of RFID previously defined
+    new_RFID = RFID(RFID_path, # Creates the RFID sprite, takes image path
+                    int(mqtt_convert_backx(float(input("What is the x coordinate for the RFID?")))), # Takes x-coordinate (in cm) and converts to pixels
+                    int(mqtt_convert_backy(float(input("What is the y coordinate for the RFID?"))))) # Takes y-coordinate (in cm) and converts to pixels
+    RFIDs.add(new_RFID)    # adds to group
+ANTENNAs = pygame.sprite.Group()  # Creates a group to place new_Antenna in
+for antennas in range (ANTENNA_num):  # Iterates through the number of Antenna previously defined
+    new_ANTENNA = ANTENNA(ANTENNA_path,int(mqtt_convert_backx(float(input("What is the x coordinate of the center of the antenna?")))), # x-coordinate to pixels
+                           int(mqtt_convert_backx(float(input("What is the y coordinate of the center of the antenna?")))), # y-coordinate to pixels
+                           int(mqtt_convert_backx(float(input("What is the diameter of the antenna?"))))) # diamter to pixels
+    ANTENNAs.add(new_ANTENNA) # adds to group
                 
 #AGVs = [] #Create empty list to store the AGV objects
 
@@ -314,44 +323,43 @@ def update_indicators():
     battery_rect.clear()
 
 def RFIDTrigger():
-    for i in range(len(AGVs)):
-        for AGV in (AGVs[i]):
-            if pygame.sprite.spritecollideany(AGV,RFIDs):
-                x_AGV = ((AGVs[i].sprite.rect.x))
-                y_AGV =(AGVs[i].sprite.rect.y)   
-                x,y = mqtt_convert(x_AGV,y_AGV)
-                x = int(x)
+    for i in range(len(AGVs)): # Iterates through the number of AGV
+        for AGV in (AGVs[i]):  # Iterates through each AGV
+            if pygame.sprite.spritecollideany(AGV,RFIDs):  # Checks for collision between the two
+                x_AGV = ((AGVs[i].sprite.rect.x))         # Gets x-coordinate (pixels) of AGV
+                y_AGV =(AGVs[i].sprite.rect.y)            # Gets y-coordinate (pixels) of AGV
+                x,y = mqtt_convert(x_AGV,y_AGV)           # Converts to cm
+                x = int(x)                                 # Makes x and y integers
                 y = int(y)
-                to_send_string = AGVs[i].sprite.color
-                to_send_byte = bytes(to_send_string,'utf-8')
-                to_send = pack('2i 6s',x,y,to_send_byte)
-                clientRFID.publish(topicRFID,to_send)
-                print('hit')
+                to_send_string = AGVs[i].sprite.color        # Gets AGV color
+                to_send_byte = bytes(to_send_string,'utf-8')    # Convrts string to bytes using utf-8
+                to_send = pack('2i 6s',x,y,to_send_byte)         # packs the two integers and a string set for 6 letters (can be longer)
+                clientRFID.publish(topicRFID,to_send)             # Publishes through mqtt topic and client to broker
     else:
         return
     
 def ANTENNATrigger():
-    for i in range(len(AGVs)):
-        for AGV in (AGVs[i]):
-            X1,Y1 = AGVs[i].sprite.rect.topleft
-            X2,Y2 = AGVs[i].sprite.rect.bottomright
-            for ANTENNA in (ANTENNAs):
-                XC = ANTENNA.rect.centerx
+    for i in range(len(AGVs)):   # Iterates over number of AGV
+        for AGV in (AGVs[i]):    # Iterates for each AGV
+            X1,Y1 = AGVs[i].sprite.rect.topleft  # Gets to left coordinate
+            X2,Y2 = AGVs[i].sprite.rect.bottomright # Gets bottom right coordiate
+            for ANTENNA in (ANTENNAs):   # Iterates for each antenna
+                XC = ANTENNA.rect.centerx   # Gets center x and y for Antenna
                 YC = ANTENNA.rect.centery
-                XN = max(X1, min(XC, X2))
+                XN = max(X1, min(XC, X2)) # Defines closest point between circle and AGV rect
                 YN = max(Y1, min(YC, Y2))
-                DX = XN - XC
-                DY = YN - YC
-                if (DX**2 + DY**2) <= ((ANTENNA.diameter)/2)**2:
-                    x_AGV = ((AGVs[i].sprite.rect.x))
+                DX = XN - XC                # Defines how far closest x is to center
+                DY = YN - YC                # Defines how far closest y is to center
+                if (DX**2 + DY**2) <= ((ANTENNA.diameter)/2)**2:  # Checks if distance is to center is less than the radius
+                    x_AGV = ((AGVs[i].sprite.rect.x))     # gets AGV x and y coordinate
                     y_AGV =(AGVs[i].sprite.rect.y)
-                    x,y = mqtt_convert(x_AGV,y_AGV)
-                    x = int(x)
+                    x,y = mqtt_convert(x_AGV,y_AGV)      # converts to cm
+                    x = int(x)                          # Gets integer for x and y
                     y = int(y)  
-                    to_send_string = AGVs[i].sprite.color
-                    to_send_byte = bytes(to_send_string,'utf-8')
-                    to_send = pack('2i 6s',x,y,to_send_byte)
-                    clientANTENNA.publish(topicANTENNA,to_send)
+                    to_send_string = AGVs[i].sprite.color    # Gets color (not needed) if the way to identify AGV is done somewhere else
+                    to_send_byte = bytes(to_send_string,'utf-8')   # Converts string to bytes
+                    to_send = pack('2i 6s',x,y,to_send_byte)         # Packs the same as the RFID function
+                    clientANTENNA.publish(topicANTENNA,to_send)      # Publishes to topic for correct client
 
 
                   
@@ -451,13 +459,13 @@ back_button = button.Button(332, 450, back_img, 1)
 
 
 
-
+# Starts the loop for mqtt
 clientRFID.loop_start()
 clientANTENNA.loop_start()
 #GAME LOOP
 setup = True #For grid
 path_draw = False #For drawing path
-scanning_RFID = False
+scanning_RFID = False   # Initial values for variables in game loop
 scanning_ANTENNA = False
 next_search_time_RFID = 0
 next_search_time_ANTENNA = 0
@@ -466,9 +474,11 @@ while run:
 
     grid = Grid(matrix = world_data) #Get grid for pathfinding
 
+# Order matters in the drawing process
+
     #Draw the background
     draw_bg()
-
+# Draws Antennas group if present
     if ANTENNA:
         ANTENNAs.draw(screen)
 
@@ -482,10 +492,8 @@ while run:
     #Draw the world (tiles)
     draw_world() 
 
-    #if ANTENNA:
-        #ANTENNAs.draw(screen)
 
-
+# Draws RFID group if present
     if RFID:
         RFIDs.draw(screen)
 
@@ -604,12 +612,13 @@ while run:
         scroll -= 5
     if scroll_right == True and scroll < (MAX_COLS * TILE_SIZE) - SCREEN_WIDTH:
         scroll += 5
-    
+    # Sets how long the interval between RFID Trigger executing by changing next_search_time_RFID
     if scanning_RFID == True:
         current_time = pygame.time.get_ticks()
         if current_time>next_search_time_RFID:
             RFIDTrigger()
             next_search_time_RFID +=2000
+# Sets how long the interval between Antenna Trigger executing by changing next_search_time_Antenna
     if scanning_ANTENNA == True:
         current_time = pygame.time.get_ticks()
         if current_time>next_search_time_ANTENNA:

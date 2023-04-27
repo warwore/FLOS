@@ -50,7 +50,7 @@ game_paused = False
 
 clientRFID = "testRFIDMain"
 clientANTENNA = "testANTENNAMain"
-broker = 'eduoracle.ugavel.com'
+broker = 'test.mosquitto.org'
 topicRFID = "FLOSCapstone/acl61582/RFIDMain"
 topicANTENNA = "FLOSCapstone/acl61582/ANTENNAMain"
 username = "giiuser"
@@ -71,8 +71,8 @@ clientRFID = mqtt.Client(clientRFID)
 clientANTENNA = mqtt.Client(clientANTENNA)
 clientRFID.on_message = onMessageRFID
 clientANTENNA.on_message = onMessageANTENNA
-clientANTENNA.username_pw_set(username,password)
-clientRFID.username_pw_set(username,password)
+#clientANTENNA.username_pw_set(username,password)
+#clientRFID.username_pw_set(username,password)
 clientRFID.connect(broker)
 clientANTENNA.connect(broker)
 clientRFID.subscribe(topicRFID)
@@ -326,7 +326,6 @@ def RFIDTrigger():
                 to_send_byte = bytes(to_send_string,'utf-8')
                 to_send = pack('2i 6s',x,y,to_send_byte)
                 clientRFID.publish(topicRFID,to_send)
-                print('hit')
     else:
         return
     

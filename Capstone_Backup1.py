@@ -326,7 +326,6 @@ def RFIDTrigger():
                 to_send_byte = bytes(to_send_string,'utf-8')
                 to_send = pack('2i 6s',x,y,to_send_byte)
                 clientRFID.publish(topicRFID,to_send)
-                print('hit')
     else:
         return
     
