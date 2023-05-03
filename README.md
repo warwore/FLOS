@@ -25,3 +25,13 @@ Yellow squares = Pickup points
 Blue squares = Dropoff points 
 
 Green squares = Recharge points
+
+TO add RFID and Antennas you have to enter # number of them and their coordinates
+Antenna 1: 5407,1520,3300
+Antenna 2: 1794,2198,3200
+Antenna 3: 7873,3500,3000
+RFID 1:  5407, 2858
+RFID 2: 4311,1203
+RFID 3: 835,2858
+RFID 4: 7063,1520
+
